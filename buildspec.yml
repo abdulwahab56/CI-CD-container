@@ -5,6 +5,8 @@ phases:
       docker: 19
   pre_build:
     commands:
+      - mv /usr/local/bin/docker /usr/bin/docker
+      - curl -L https://raw.githubusercontent.com/docker/compose-cli/main/scripts/install/install_linux.sh | sh
       - echo Logging in to Amazon ECR...
       - aws --version
       - $(aws ecr get-login --region us-west-1 --no-include-email)
@@ -15,7 +17,7 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t nodejs-fargate:latest .
+      - docker build -t nodejs-fargate .
       - docker tag nodejs-fargate:latest public.ecr.aws/r9c1h1x1/nodejs-fargate:latest
   post_build:
     commands:
