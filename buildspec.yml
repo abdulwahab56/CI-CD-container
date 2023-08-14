@@ -1,31 +1,27 @@
 version: 0.2
 phases:
-  install:
-    runtime-versions:
-      docker: 19
   pre_build:
     commands:
-      - mv /usr/local/bin/docker /usr/bin/docker
-      - curl -L https://raw.githubusercontent.com/docker/compose-cli/main/scripts/install/install_linux.sh | sh
       - echo Logging in to Amazon ECR...
       - aws --version
-      - $(aws ecr get-login --region us-east-1 --no-include-email)
-      - REPOSITORY_URI=__ACCOUNT_NUMBER__.dkr.ecr.us-west-1.amazonaws.com/nodejs-fargate
+      - $(aws ecr get-login --region $AWS_DEFAULT_REGION --no-include-email)
+      - REPOSITORY_URI=public.ecr.aws/r9c1h1x1/nodejs-fargate
       - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - IMAGE_TAG=${COMMIT_HASH:=latest}
+      - IMAGE_TAG=build-$(echo $CODEBUILD_BUILD_ID | awk -F":" '{print $2}')
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t nodejs-fargate .
-      - docker tag nodejs-fargate:latest public.ecr.aws/r9c1h1x1/nodejs-fargate:latest
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker images...
-      - docker push public.ecr.aws/r9c1h1x1/nodejs-fargate:latest
-      - docker push public.ecr.aws/r9c1h1x1/nodejs-fargate
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
-      - printf '[{"name”:"myvpc-task","imageUri":"%s"}]' public.ecr.aws/r9c1h1x1/nodejs-fargate:latest > imagedefinitions.json
+      - printf '[{"name":"nodeapp","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
 artifacts:
   files: imagedefinitions.json
